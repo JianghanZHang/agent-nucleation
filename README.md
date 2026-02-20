@@ -32,6 +32,20 @@ The pool is μ_cont — the liquid part of the neuron pool. Drop your notes, pap
 
 Your pool is the fuel. V() is the engine.
 
+## Workspace — The Crystallization Surface
+
+```
+agent_workspace/
+├── llm_readme.md                          ← instructions for sub-agents
+├── 2026-02-20T15:30:00_slot_A_demand.md   ← (runtime)
+├── 2026-02-20T15:30:45_slot_A_resolved.md ← (runtime)
+└── ...
+```
+
+Sub-agents write here. One file per state change, timestamped, never overwritten. After V() completes, the workspace is the full record of the cascade — which slots fired DEMAND, what was tried, what resolved, how many rounds.
+
+Read-only for humans. Ephemeral. Clear it anytime.
+
 ## How It Works
 
 1. **Parse**: extract T (target) and B (basis) from user input
@@ -55,6 +69,7 @@ This plugin implements [Neuron Dynamics](https://github.com/JianghanZHang/A-KIND
 - **Neuron pool** → skill bank + pool/
 - **μ_cont (liquid)** → pool/ (user's raw material)
 - **Nucleation** → sub-agent spawns on DEMAND
+- **Crystal surface** → agent_workspace/ (timestamped log)
 - **Collapse** → sub-agent claims, output absorbed
 - **Core number K\*** → minimum sub-agents needed
 - **FPE** → dominos reasoning template

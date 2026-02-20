@@ -60,6 +60,12 @@ $$\operatorname{path}(B \to T) \;\subset\; \operatorname{supp}(\mu_{\text{bank}}
 i.e., the skill bank's domain covers every step from basis to target.
 If not complete: **DEMAND(missing\_tool)**. Do not proceed without support.
 
+**Definition 4 (Workspace).**
+`agent_workspace/` is the crystallization surface. Sub-agents write
+timestamped files here: one file per state change, never overwrite.
+The workspace is the full record of the cascade.
+Read `agent_workspace/llm_readme.md` for the file protocol.
+
 
 ## 2. Protocol
 
@@ -123,6 +129,7 @@ Can resolve from loaded tools?
         Not found? → spawn ONE sub-agent: V(T_k, B_k)
          where  T_k = "fill slot k"
                 B_k = context from parent cascade
+         Sub-agent writes to agent_workspace/ (timestamped)
          Wait for sub-agent's CLAIM
          Absorb claim into slot k
          Continue cascade
@@ -151,6 +158,7 @@ When cascade verifies ($\texttt{believe\_it}$):
 | Atom $\delta_\theta$ (active neuron) | Active sub-agent |
 | Continuous part $\mu_{\text{cont}}$ (redundant) | `pool/` — user's raw material (liquid, ready to nucleate) |
 | Nucleation: atom forms in $\mu$ | Sub-agent spawns on DEMAND |
+| Crystal surface | `agent_workspace/` — where atoms form, timestamped |
 | Collapse: atom dissolves, mass redistributes | Sub-agent claims, output absorbed into parent slot |
 | FPE: $\partial\mu/\partial t = \nabla\!\cdot\!(\mu\nabla V) + \tau\Delta\mu$ | Template structures the cascade |
 | Temperature $\tau$ | Budget / context remaining |

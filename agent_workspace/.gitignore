@@ -1,0 +1,5 @@
+# Ignore runtime artifacts (sub-agent work files)
+*
+# But track the readme and this gitignore
+!.gitignore
+!llm_readme.md
