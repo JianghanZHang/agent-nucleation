@@ -66,6 +66,17 @@ timestamped files here: one file per state change, never overwrite.
 The workspace is the full record of the cascade.
 Read `agent_workspace/llm_readme.md` for the file protocol.
 
+**Definition 5 (Plan).**
+`agent_plan/` is the cooling schedule. The user sets `horizon: N`
+(default 0 = bang-bang). At horizon > 0, the plan is a living
+document: every sub-agent MUST read it, do its work, then update
+it before claiming resolved. Skipping the update is a guardian violation.
+
+**Definition 6 (Table).**
+`agent_table/` is the active set $\mathcal{A}(\mu)$. Every sub-agent
+that resolves or fails drops a marker file in `markers/`. The table
+is reconstructed from markers. $K^* = |\texttt{RESOLVED markers}|$.
+
 
 ## 2. Protocol
 
@@ -144,10 +155,15 @@ Never spawn speculatively. Never fan out. One DEMAND, one sub-agent.
 ### Step 5 — Claim
 
 When cascade verifies ($\texttt{believe\_it}$):
-1. The process **is** now an agent (it has a verified claim)
-2. Present: the plan (what $V$ will do) + the evidence (the cascade)
-3. User approves → execute
-4. Output = the claim
+1. **File marker** in `agent_table/markers/` (timestamp, slot, status, sources, claim)
+2. **Update plan** in `agent_plan/plan.md` (if horizon > 0)
+3. **Log cascade verify** in `agent_workspace/`
+4. The process **is** now an agent (it has a verified claim)
+5. Present: the plan + the evidence (the cascade) + the marker
+6. User approves → execute
+7. Output = the claim
+
+The guardian checks steps 1--3 before allowing completion.
 
 
 ## 3. The Correspondence
@@ -165,6 +181,9 @@ When cascade verifies ($\texttt{believe\_it}$):
 | $\tau \to 0$ (solidification) | Task converges to claim |
 | $K^*$ (core number) | Minimum sub-agents needed |
 | Free core $\mathfrak{F}$ | Minimal skill subset that resolves $T$ |
+| Active set $\mathcal{A}(\mu)$ | `agent_table/` — markers for each resolved slot |
+| Cooling schedule $\tau(t)$ | `agent_plan/` — horizon controls lookahead |
+| Conservation law | Guardian — nothing lost, nothing fabricated |
 | Forward pass $f_\mu(x)$ | $V(T,B)$ execution |
 | Retinal principle: $n = d_{\text{in}}$ | Tool count matches domain breadth |
 | Conservation: $\|\mu\| = n$ | Context budget is finite |
@@ -191,6 +210,11 @@ The protocol is self-similar at every scale.
 **P6 (Conservative).** When a sub-agent's claim is absorbed,
 the information fills a slot --- not lost.
 When a tool is unused, it remains in the bank for future calls.
+
+**P7 (Guarded).** Three invariants enforced by always-active hooks:
+(1) time-aligned — wall-clock ISO 8601 to the second,
+(2) no self-deception — no claim without evidence,
+(3) nothing lost — markers, plan, workspace all updated before completion.
 
 
 ## 5. The Nucleation Criterion
