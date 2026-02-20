@@ -1,0 +1,6 @@
+# Ignore user pool files (they are local/private)
+*
+# But track the readmes and this gitignore
+!.gitignore
+!llm_readme.md
+!user_readme.md

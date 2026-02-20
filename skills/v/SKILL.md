@@ -88,8 +88,11 @@ Read the tool directory. For each tool $\omega_j$, check:
 
 $$\operatorname{supp}(\omega_j) \;\cap\; \operatorname{path}(B \to T) \;\neq\; \varnothing \;?$$
 
-Load matching tools. If no tool covers a required segment:
-$\texttt{DEMAND(missing\_tool)}$. Report what is missing.
+Load matching tools. If no tool covers a required segment,
+search `pool/` for user-provided material that overlaps.
+If pool resolves: use it (cite the file). If neither tools
+nor pool covers a segment: $\texttt{DEMAND(missing\_tool)}$.
+Report what is missing.
 
 ### Step 3 — Cascade (via template)
 
@@ -125,7 +128,9 @@ When DEMAND fires at slot $k$:
 ```
 Can resolve from loaded tools?
   YES → load tool, fill slot k, continue cascade
-  NO  → spawn ONE sub-agent: V(T_k, B_k)
+  NO  → search pool/ for relevant material
+        Found? → read, extract, fill slot k, cite source
+        Not found? → spawn ONE sub-agent: V(T_k, B_k)
          where  T_k = "fill slot k"
                 B_k = context from parent cascade
          Wait for sub-agent's CLAIM
@@ -154,7 +159,7 @@ When cascade verifies ($\texttt{believe\_it}$):
 |---|---|
 | Pool $\mu$ on operator space $\Theta$ | Skill bank $\mu$ on tool space $\Omega$ |
 | Atom $\delta_\theta$ (active neuron) | Active sub-agent |
-| Continuous part $\mu_{\text{cont}}$ (redundant) | Loaded but unused tools |
+| Continuous part $\mu_{\text{cont}}$ (redundant) | `pool/` — user's raw material (liquid, ready to nucleate) |
 | Nucleation: atom forms in $\mu$ | Sub-agent spawns on DEMAND |
 | Collapse: atom dissolves, mass redistributes | Sub-agent claims, output absorbed into parent slot |
 | FPE: $\partial\mu/\partial t = \nabla\!\cdot\!(\mu\nabla V) + \tau\Delta\mu$ | Template structures the cascade |
