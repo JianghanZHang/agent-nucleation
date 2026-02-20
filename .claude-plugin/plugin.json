@@ -1,0 +1,13 @@
+{
+  "name": "agent-nucleation",
+  "description": "V(T,B): The Agent Function. Agents defined by math, not by model. A process nucleates into an agent when it produces a verified claim.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Jianghan Zhang",
+    "email": "Jianghan.Zhang.gr@dartmouth.edu"
+  },
+  "homepage": "https://github.com/JianghanZHang/agent-nucleation",
+  "repository": "https://github.com/JianghanZHang/agent-nucleation",
+  "license": "MIT",
+  "keywords": ["agents", "nucleation", "formal-agents", "V-protocol", "dominos-reasoning", "neuron-dynamics"]
+}
