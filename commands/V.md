@@ -24,4 +24,4 @@ Wait for confirmation.
 
 **Step 2: Invoke the protocol.**
 
-Once T and B are confirmed, invoke the `agent-nucleation:V` skill and follow it exactly.
+Once T and B are confirmed, invoke the `agent-nucleation:v` skill and follow it exactly.

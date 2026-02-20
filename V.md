@@ -1,15 +1,8 @@
 ---
-name: V
-description: >
-  The Agent Function. V(T,B) is the protocol by which a sub-agent
-  nucleates into an agent by claiming a verified output.
-  Neuron Dynamics applied to agent management.
-  Use when orchestrating multi-tool reasoning, when a task requires
-  checking whether available skills cover the problem, or when
-  sub-agents need to be spawned with discipline (lazy, not speculative).
-Author: Jianghan Zhang
-Email: Jianghan.Zhang.gr@dartmouth.edu
-Date: February 2026
+title: "V: The Agent Function"
+author: Jianghan Zhang
+affiliation: Dartmouth College
+date: February 2026
 ---
 
 # V: The Agent Function
@@ -208,7 +201,7 @@ is the **core number** of the task.
 ## 6. Relationship to Existing Work
 
 **Template (always active):**
-`dominos_reasoning` is the FPE --- it structures HOW to think.
+`dominos-reasoning` is the FPE --- it structures HOW to think.
 9 slots, 3 layers, COMMAND/DEMAND protocol.
 
 **Tools (loaded on demand):**
@@ -216,8 +209,8 @@ Each tool is a domain knowledge module.
 
 | Tool | Domain | Support |
 |---|---|---|
-| `neuron_dynamics` | Physical systems, architecture emergence, FPE, phase transitions | Thermodynamic analogies, emergent structure, log-space |
-| `explain_with_math` | Identity protocol, graded levels (A/B/C) | "Why" questions, general audience explanations |
+| `neuron-dynamics` | Physical systems, architecture emergence, FPE, phase transitions | Thermodynamic analogies, emergent structure, log-space |
+| `explain-with-math` | Identity protocol, graded levels (A/B/C) | "Why" questions, general audience explanations |
 | `surgery` | Precise document/code edits, minimal footprint | Large-file modifications, LaTeX insertions |
 | ... | nucleate as the user creates them | |
 
@@ -232,9 +225,9 @@ the operator that combines template and tools to produce a claim.
     B: "RG flow, evolution"
 
 → Parse:  T = explain,  B = {RG flow, evolution}
-→ Check:  explain_with_math covers "explain"
-          neuron_dynamics covers "RG flow"
-→ Load:   explain_with_math + neuron_dynamics
+→ Check:  explain-with-math covers "explain"
+          neuron-dynamics covers "RG flow"
+→ Load:   explain-with-math + neuron-dynamics
 → Cascade: ground, ascend, chain, ascend, verify
 → Claim:  graded explanation (Level B skeleton — dissipative
           flow shares mathematical structure with evolution)
@@ -246,8 +239,8 @@ the operator that combines template and tools to produce a claim.
 
 → Parse:  T = paper edit,  B = {BVP, ND}
 → Check:  surgery covers "paper edit"
-          neuron_dynamics covers "BVP, ND"
-→ Load:   surgery + neuron_dynamics
+          neuron-dynamics covers "BVP, ND"
+→ Load:   surgery + neuron-dynamics
 → Cascade: ground, ascend, chain, ascend, verify
 → Claim:  Test C subsection — LaTeX block with BVP table,
           predictions, success criteria, insightbox

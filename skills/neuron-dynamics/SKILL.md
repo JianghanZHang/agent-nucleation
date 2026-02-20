@@ -147,7 +147,7 @@ Manufacturing (annealing) is training. Using it is inference.
 
 ## When This Tool Applies
 
-Load `neuron_dynamics` when reasoning about:
+Load `neuron-dynamics` when reasoning about:
 
 - Neural architecture (why this width / depth / $K$?)
 - Physical analogies to computation (steel, crystals, phase transitions)

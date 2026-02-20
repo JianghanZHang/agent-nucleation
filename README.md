@@ -15,9 +15,9 @@ The Agent Function. Model-agnostic. Takes a target and a basis, produces a verif
 
 | Grade | Name | Role | Contents |
 |---|---|---|---|
-| 2 | **agent-nucleation** | The function — WHAT V produces | `skills/V/` |
-| 1 | **formal-agents** | The template — HOW agents reason | `Template/dominos_reasoning/` |
-| 0 | **V-protocol** | The tools — WITH WHAT | `Tool/neuron_dynamics/`, `Tool/explain_with_math/`, ... |
+| 2 | **agent-nucleation** | The function — WHAT V produces | `skills/v/` |
+| 1 | **formal-agents** | The template — HOW agents reason | `skills/dominos-reasoning/` |
+| 0 | **V-protocol** | The tools — WITH WHAT | `skills/neuron-dynamics/`, `skills/explain-with-math/`, ... |
 
 ## How It Works
 
