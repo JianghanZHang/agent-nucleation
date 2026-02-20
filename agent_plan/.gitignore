@@ -1,0 +1,5 @@
+# Ignore runtime plan (session-specific)
+plan.md
+# But track the readme and gitignore
+!.gitignore
+!llm_readme.md

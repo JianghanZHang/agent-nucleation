@@ -1,0 +1,7 @@
+# Ignore runtime markers and table (they are session-specific)
+markers/*
+!markers/.gitkeep
+table.md
+# But track the readme and gitignore
+!.gitignore
+!llm_readme.md

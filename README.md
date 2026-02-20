@@ -46,6 +46,39 @@ Sub-agents write here. One file per state change, timestamped, never overwritten
 
 Read-only for humans. Ephemeral. Clear it anytime.
 
+## Plan — Lookahead Horizon
+
+```
+agent_plan/
+├── llm_readme.md   ← protocol + horizon setting (default: 0 = bang-bang)
+└── plan.md          ← (runtime: the living plan)
+```
+
+Set `horizon: N` in `llm_readme.md`. At 0 (default): bang-bang control — react to the immediate DEMAND, no lookahead. At N > 0: plan N steps ahead. Every sub-agent MUST update the plan before claiming resolved.
+
+## Table — The Active Set Census
+
+```
+agent_table/
+├── llm_readme.md   ← protocol
+├── markers/         ← one .md per completion event
+└── table.md         ← (runtime: summary view)
+```
+
+Every sub-agent drops a marker on completion: timestamp, slot, status, sources, claim. The table is A(μ) — the active set. K* = count of RESOLVED markers.
+
+## Guardian — Always Active
+
+Three invariants. No exceptions. Enforced by hooks (Stop + PostToolUse).
+
+| # | Invariant | Meaning |
+|---|-----------|---------|
+| 1 | **Time-aligned** | All timestamps are real wall-clock ISO 8601, to the second |
+| 2 | **No self-deception** | No claim without evidence. No "should work." Run verification, cite result, then claim. |
+| 3 | **Nothing lost** | All work recorded. Markers filed. Plan updated. Workspace logged. |
+
+If any invariant fails, the guardian blocks completion and says exactly what went wrong.
+
 ## How It Works
 
 1. **Parse**: extract T (target) and B (basis) from user input
@@ -71,9 +104,12 @@ This plugin implements [Neuron Dynamics](https://github.com/JianghanZHang/A-KIND
 - **Nucleation** → sub-agent spawns on DEMAND
 - **Crystal surface** → agent_workspace/ (timestamped log)
 - **Collapse** → sub-agent claims, output absorbed
-- **Core number K\*** → minimum sub-agents needed
+- **Active set A(μ)** → agent_table/ (markers)
+- **Cooling schedule** → agent_plan/ (horizon)
+- **Core number K\*** → count of RESOLVED markers
 - **FPE** → dominos reasoning template
 - **Temperature** → context budget remaining
+- **Conservation law** → guardian (nothing lost)
 
 You do not design agents. You let them nucleate.
 

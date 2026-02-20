@@ -1,7 +1,7 @@
 {
   "name": "agent-nucleation",
   "description": "V(T,B): The Agent Function. Agents defined by math, not by model. A process nucleates into an agent when it produces a verified claim.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": {
     "name": "Jianghan Zhang",
     "email": "Jianghan.Zhang.gr@dartmouth.edu"
@@ -9,5 +9,24 @@
   "homepage": "https://github.com/JianghanZHang/agent-nucleation",
   "repository": "https://github.com/JianghanZHang/agent-nucleation",
   "license": "MIT",
-  "keywords": ["agents", "nucleation", "formal-agents", "V-protocol", "dominos-reasoning", "neuron-dynamics"]
+  "keywords": ["agents", "nucleation", "formal-agents", "V-protocol", "dominos-reasoning", "neuron-dynamics", "guardian"],
+  "hooks": [
+    {
+      "event": "Stop",
+      "type": "prompt",
+      "prompt": "You are the Guardian. Before this agent completes, verify three invariants. Fail ANY one → block completion.\n\nINVARIANT 1 — TIME-ALIGNED: every file in agent_workspace/, agent_table/, agent_plan/ has a real wall-clock ISO 8601 timestamp to the second. Not estimated. Not fabricated.\n\nINVARIANT 2 — NO SELF-DECEPTION: the agent is not claiming RESOLVED without evidence. No 'should work', no 'probably', no completion without verification.\n\nINVARIANT 3 — NOTHING LOST: agent_table/ has markers for every filled slot. agent_plan/ was updated (if horizon > 0). agent_workspace/ has the cascade record.\n\nIf all pass: allow. If any fails: block and report which invariant, what evidence, what to fix."
+    },
+    {
+      "event": "PostToolUse",
+      "type": "prompt",
+      "toolName": "Write",
+      "prompt": "A file was just written. If it is in agent_workspace/, agent_table/, or agent_plan/: check it has a wall-clock ISO 8601 timestamp to the second. If missing: warn the agent to add it. If the file is elsewhere: no action."
+    },
+    {
+      "event": "PostToolUse",
+      "type": "prompt",
+      "toolName": "Edit",
+      "prompt": "A file was just edited. If it is in agent_workspace/, agent_table/, or agent_plan/: check it has a wall-clock ISO 8601 timestamp to the second. If missing: warn the agent to add it. If the file is elsewhere: no action."
+    }
+  ]
 }
