@@ -1,8 +1,13 @@
 ---
 name: explain-with-math
 description: Use when the user asks "why does X work?", "explain X to me", "how does X work simply?", "ELI5", or wants any phenomenon explained to a general audience by showing the mathematical structure behind it. Also use when the user wants to make a technical concept accessible without dumbing it down.
-Author: Jianghan Zhang
-Email: Jianghan.Zhang.gr@dartmouth.edu
+license: MIT
+metadata:
+  author: Jianghan Zhang
+  email: Jianghan.Zhang.gr@dartmouth.edu
+  version: "0.1"
+  grade: "0"
+  role: tool
 ---
 
 # Explain With Math

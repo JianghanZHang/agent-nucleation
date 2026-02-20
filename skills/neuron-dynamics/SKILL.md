@@ -8,9 +8,14 @@ description: >
   thermodynamic analogies, nucleation/collapse dynamics,
   log-space computation, or boundary value formulations
   of controller design.
-Author: Jianghan Zhang
-Email: Jianghan.Zhang.gr@dartmouth.edu
-Source: "Neuron Dynamics: Log-Space Computation with Emergent Architecture" (Zhang, 2026)
+license: MIT
+metadata:
+  author: Jianghan Zhang
+  email: Jianghan.Zhang.gr@dartmouth.edu
+  version: "0.1"
+  grade: "0"
+  role: tool
+  source: "Neuron Dynamics: Log-Space Computation with Emergent Architecture (Zhang, 2026)"
 ---
 
 # Neuron Dynamics — Tool

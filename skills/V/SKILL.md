@@ -1,5 +1,5 @@
 ---
-name: V
+name: v
 description: >
   The Agent Function. V(T,B) is the protocol by which a sub-agent
   nucleates into an agent by claiming a verified output.
@@ -7,9 +7,12 @@ description: >
   Use when orchestrating multi-tool reasoning, when a task requires
   checking whether available skills cover the problem, or when
   sub-agents need to be spawned with discipline (lazy, not speculative).
-Author: Jianghan Zhang
-Email: Jianghan.Zhang.gr@dartmouth.edu
-Date: February 2026
+license: MIT
+metadata:
+  author: Jianghan Zhang
+  email: Jianghan.Zhang.gr@dartmouth.edu
+  version: "0.1"
+  grade: "2"
 ---
 
 # V: The Agent Function

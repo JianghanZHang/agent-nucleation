@@ -1,8 +1,13 @@
 ---
 name: dominos-reasoning
 description: Use when facing a problem requiring structured multi-layer reasoning, when abstract claims need grounding in concrete facts, when parallel sub-agents need coordination with uncertainty propagation, or when a reasoning chain keeps breaking and you need to locate exactly which link fails.
-Author: Jianghan Zhang
-Email: Jianghan.Zhang.gr@dartmouth.edu
+license: MIT
+metadata:
+  author: Jianghan Zhang
+  email: Jianghan.Zhang.gr@dartmouth.edu
+  version: "0.1"
+  grade: "1"
+  role: template
 ---
 
 # Dominos Reasoning
