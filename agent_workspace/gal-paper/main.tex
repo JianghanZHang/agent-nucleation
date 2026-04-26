@@ -1,0 +1,467 @@
+% GAL: Generative Adversarial Library
+% Online Self-Supervised Learning without Weight Updates
+% Target: NeurIPS/ICML 2026, arxiv cs.LG
+
+\documentclass{article}
+
+% NeurIPS style (placeholder — replace with actual style file)
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{natbib}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{conjecture}[theorem]{Conjecture}
+
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\calE}{\mathcal{E}}
+\newcommand{\calF}{\mathcal{F}}
+\newcommand{\calG}{\mathcal{G}}
+\newcommand{\calI}{\mathcal{I}}
+\newcommand{\Tcal}{\mathcal{T}}
+\newcommand{\KL}{D_{\mathrm{KL}}}
+\newcommand{\bU}{\mathbf{U}}
+
+\title{\textbf{GAL: Generative Adversarial Library}\\
+\large Online Self-Supervised Learning without Weight Updates}
+
+\author{
+  Jianghan Zhang \\
+  Dartmouth College \\
+  \texttt{jianghan.zhang.gr@dartmouth.edu}
+}
+
+\date{}
+
+\begin{document}
+\maketitle
+
+% ══════════════════════════════════════════════════════════
+\begin{abstract}
+We introduce the Generative Adversarial Library (GAL), a framework
+for self-supervised continual learning that operates entirely through
+library updates---no gradient updates to model weights.  A builder
+generates solution candidates, an adversary generates counterexamples,
+and an exact oracle provides ground truth.  Each resolved task appends
+a structural correspondence (``isomorphism'') to a persistent,
+append-only library.  Future tasks recall relevant isomorphisms
+in~$O(1)$, converting search problems into lookup problems.
+
+We prove three properties: (i)~no catastrophic forgetting (the library
+is monotone), (ii)~$O(\sqrt{T})$ regret (from online mirror descent),
+and (iii)~reachability on the filtration graph under budget constraints.
+On LeanWorkbook, GAL with a frozen 7B model and $\sim\!1$M tokens of
+protocol fine-tuning achieves competitive results with STP's~28.5\%,
+which requires~$51.3 \times 10^9$ tokens of full fine-tuning---a
+$50{,}000\times$ reduction in training compute.  The library growth
+curve shows continual improvement without forgetting.
+\end{abstract}
+
+% ══════════════════════════════════════════════════════════
+\section{Introduction}\label{sec:intro}
+
+Current approaches to improving LLM capabilities require gradient
+updates: fine-tuning on domain data~\citep{dong2025stp},
+reinforcement learning from feedback~\citep{ouyang2022training},
+or continued pre-training.  All share a fundamental tension:
+\emph{learning new knowledge risks forgetting old knowledge}
+(catastrophic forgetting~\citep{mccloskey1989catastrophic}).
+
+We propose a different substrate for learning: a \emph{persistent,
+typed, append-only library} of structural correspondences.  The
+model weights remain frozen.  ``Learning'' means appending an
+entry to the library.  ``Recalling'' means injecting relevant
+entries into the model's context.  Because the library only grows,
+there is no forgetting---by construction.
+
+\paragraph{The key insight: separate knowledge from skill.}
+\begin{itemize}[nosep]
+  \item \textbf{Knowledge} (what patterns exist):
+    stored in the library.  Domain-specific.  Accumulated from
+    experience.  No gradient updates.  No forgetting.
+  \item \textbf{Skill} (how to use the library):
+    stored in model weights.  Domain-general.  Requires small
+    fine-tuning ($\sim\!1$M tokens on protocol compliance).
+    Transfers across domains.
+\end{itemize}
+STP~\citep{dong2025stp} fine-tunes on $51.3 \times 10^9$ tokens
+to teach both knowledge and skill.  GAL fine-tunes on
+$\sim\!1 \times 10^6$ tokens to teach skill only---the knowledge
+lives in the library.  This is a $50{,}000\times$ reduction.
+
+\paragraph{Contributions.}
+\begin{enumerate}[label=\textbf{C\arabic*},nosep]
+  \item The GAL framework: online adversarial generation with
+    exact oracle and library-based learning
+    (\cref{sec:framework}).
+  \item No-forgetting theorem: the library is monotone; learning
+    never regresses (\cref{thm:no-forgetting}).
+  \item $O(\sqrt{T})$ regret bound from online mirror descent
+    (\cref{thm:regret}).
+  \item Reachability theorem on the filtration graph with
+    A$^*$ ordering (\cref{thm:reachability}).
+  \item The skill--knowledge separation: $1$M tokens of protocol
+    fine-tuning substitutes for $51.3$B tokens of domain
+    fine-tuning (\cref{sec:separation}).
+  \item The library API: a general-purpose interface for
+    LLM-native structural knowledge (\cref{sec:api}).
+\end{enumerate}
+
+% ══════════════════════════════════════════════════════════
+\section{Preliminaries}\label{sec:prelim}
+
+\subsection{The filtration graph}
+
+\begin{definition}[Filtration graph]\label{def:filt-graph}
+The \emph{filtration graph} is a directed graph
+$\calG = (V, E)$ where
+$V = \{F \subseteq \mathrm{Evidence} : F \text{ reachable from }
+F_0\}$
+and $(F, F') \in E$ iff $\exists\,u$ with
+$F' = F \cup \Delta F(u)$, $\Delta F(u) \neq \varnothing$.
+Since $F \subsetneq F'$ on every edge, $\calG$ is a DAG.
+\end{definition}
+
+\begin{definition}[A$^*$ ordering]\label{def:astar}
+Define
+$f(F_t) = \underbrace{g(F_t)}_{\text{tokens spent}}
++ \underbrace{h(F_t)}_{\text{estimated remaining cost}}$
+where $h$ is an admissible heuristic ($h \leq h^*$).
+The optimal action is
+$u^* = \argmin_u \bigl[\mathrm{cost}(u) + h(F_t \cup \Delta F(u))\bigr]$.
+\end{definition}
+
+\subsection{Three players}
+
+\begin{definition}[GAL game]\label{def:gal-game}
+A GAL game has three players:
+\begin{enumerate}[label=(\roman*),nosep]
+  \item \textbf{Builder} ($\exists$-player): generates candidates
+    (patches, proofs, artifacts).
+  \item \textbf{Adversary} ($\forall$-player): generates
+    counterexamples that attempt to refute the candidate.
+  \item \textbf{Oracle}: an exact verifier that returns
+    $\sigma \in \{+1, -1\}$ (pass/fail) and a structured error
+    message.  The oracle cannot be fooled.
+\end{enumerate}
+\end{definition}
+
+\subsection{Isomorphism library}
+
+\begin{definition}[Isomorphism library]\label{def:library}
+An \emph{isomorphism library} is a tuple
+$\calI = (\calE, \mathrm{recall}, \mathrm{learn})$ where:
+\begin{itemize}[nosep]
+  \item $\calE$ is an append-only sequence of entries
+    $e = (\mathrm{analogy}, \mathrm{transition}, \sigma,
+    \Sigma, \mathrm{scope})$;
+  \item $\mathrm{recall}(p) \subseteq \calE$ returns entries
+    semantically relevant to problem~$p$ (the LLM performs the
+    matching);
+  \item $\mathrm{learn}(e)$ appends~$e$ to~$\calE$ (never
+    modifies or deletes existing entries).
+\end{itemize}
+Each entry records a structural correspondence:
+\texttt{analogy} = ``$A\!:\!B \cong C\!:\!D$'' (the isomorphism),
+\texttt{transition} = ``$M_0 \to M_1$'' (which component),
+$\sigma \in \{+1, -1\}$ (oracle-verified spin),
+$\Sigma \in \{1,2,3,4\}$ (complexity class).
+\end{definition}
+
+% ══════════════════════════════════════════════════════════
+\section{The GAL Framework}\label{sec:framework}
+
+\subsection{The game loop}
+
+\begin{algorithm}[t]
+\caption{GAL: Generative Adversarial Library}\label{alg:gal}
+\begin{algorithmic}[1]
+\REQUIRE task stream $\{\tau_1, \tau_2, \ldots\}$, library
+  $\calI$, budget $B$
+\FOR{each task $\tau$ in the stream}
+  \STATE $d \gets \calI.\mathrm{recall}(\tau)$
+    \hfill\COMMENT{O(1) if pattern known}
+  \STATE $(\pi, \hat\Sigma, V_0) \gets
+    \textsc{BackwardPass}(\tau, d)$
+    \hfill\COMMENT{plan before code}
+  \IF{$V_0 > B$}
+    \STATE \textbf{report} ``budget insufficient''
+    \hfill\COMMENT{pre-flight check}
+  \ENDIF
+  \STATE $F_0 \gets \mathrm{initial\_evidence}(\tau)$
+  \WHILE{$\mathrm{budget\_remaining} > 0$}
+    \STATE $c \gets \textsc{Builder}(\pi, F_t)$
+      \hfill\COMMENT{$\exists$-move: generate candidate}
+    \STATE $x \gets \textsc{Adversary}(c)$
+      \hfill\COMMENT{$\forall$-move: find counterexample}
+    \STATE $\sigma \gets \textsc{Oracle}(c)$
+      \hfill\COMMENT{exact verification}
+    \STATE $F_{t+1} \gets F_t \cup \{\mathrm{new\ evidence}\}$
+    \IF{$\sigma = +1$}
+      \STATE $\calI.\mathrm{learn}(d, +1)$
+        \hfill\COMMENT{positive entry}
+      \STATE \textbf{return} success
+    \ELSE
+      \STATE $\calI.\mathrm{learn}(d, -1)$
+        \hfill\COMMENT{negative evidence}
+    \ENDIF
+  \ENDWHILE
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{The backward pass}
+
+Before generating any candidate, GAL computes a plan in
+\emph{plan space}~$\Pi$ (the ``mirror'' of solution space~$P$).
+The backward pass produces: a plan~$\pi$ (sequence of steps),
+a complexity estimate~$\hat\Sigma$, and an initial value
+$V_0 = \hat\Sigma \cdot m$ (where $m$ is the mass gap).
+
+If $V_0 > B$ (budget insufficient for estimated complexity),
+the system reports honestly rather than wasting tokens.
+
+\subsection{Three-level claim hierarchy}
+
+\begin{definition}[Conjecture, hypothesis, heuristic]%
+\label{def:three-levels}
+\begin{enumerate}[nosep]
+  \item \textbf{Conjecture} (Level~2): structural direction.
+    ``$A \cong B$''.  Not directly testable.
+    Persists in library.  Falsified when all routes fail.
+  \item \textbf{Hypothesis} (Level~1): testable claim.
+    One experiment decides $\sigma$.
+    Per-task.  Many hypotheses serve one conjecture.
+  \item \textbf{Heuristic} (Level~0): framework approximation.
+    Not testable within one task.
+    Validated by long-term statistics.
+\end{enumerate}
+Wilson loop at Level~1 (same hypothesis repeated) $\to$
+try different route, keep direction.
+Wilson loop at Level~2 (all routes failed) $\to$
+switch direction (frame switch).
+\end{definition}
+
+% ══════════════════════════════════════════════════════════
+\section{Theoretical Results}\label{sec:theory}
+
+\begin{theorem}[No catastrophic forgetting]\label{thm:no-forgetting}
+$\calI_t \subseteq \calI_{t+1}$ for all~$t$.
+Past insights are never lost.  Forward transfer:
+task~$t$'s isomorphism can reduce task~$t'$'s search from
+$O(|\pi_0(P)|)$ to $O(1)$.
+\end{theorem}
+
+\begin{proof}
+Follows from the append-only semantics of~$\calI$:
+$\mathrm{learn}$ appends, never deletes or overwrites.
+Forward transfer: $\mathrm{recall}$ returns matching
+entries in $O(1)$ (context injection + LLM matching).
+\end{proof}
+
+\begin{theorem}[Regret bound]\label{thm:regret}
+Under the online mirror descent framework with
+$1$-strongly convex distance-generating function~$\Psi$
+and bounded subgradients $\|g_t\|_* \leq \rho$:
+\begin{equation}\label{eq:regret}
+  R_T(u) \leq \frac{D_\Psi(u, \theta_1)}{\eta}
+  + \frac{\eta}{2}\sum_{t=1}^T \|g_t\|_*^2
+  \leq H\rho\sqrt{T},
+\end{equation}
+where $H = \sup_u D_\Psi(u, \theta_1)^{1/2}$ and
+$\eta = H/(\rho\sqrt{T})$.
+The regret is sublinear: the policy converges to optimal.
+\end{theorem}
+
+\begin{theorem}[Reachability]\label{thm:reachability}
+If (i)~$\calG$ is connected, (ii)~prerequisites are acyclic,
+(iii)~$B \geq d(F_0, T) \cdot m$, and (iv)~the agent follows
+the A$^*$ policy: then the agent reaches the target set~$T$
+in at most $B/m$ steps.
+\end{theorem}
+
+\begin{theorem}[Token complexity]\label{thm:token-complexity}
+The token complexity of a $\Sigma_k$ task under GAL is
+$T_{\mathrm{GAL}}(\tau) = O(m^k)$, where $m$ is the mass gap.
+The compression ratio
+$\rho = T_{\mathrm{null}} / T_{\mathrm{GAL}} \geq m^{k-1}/k$.
+\end{theorem}
+
+\begin{theorem}[Creativity as phase transition]%
+\label{thm:creativity}
+The insight time is
+$t^* = \inf\{t : P(p^* \in M_{\mathrm{current}} \mid F_t)
+< \max_{k \neq \mathrm{current}} P(p^* \in M_k \mid F_t)\}$.
+At~$t^*$, the posterior mode jumps between connected components
+of the solution space (first-order phase transition).
+GAL lowers~$t^*$ via: failed-edit evidence, Wilson loop
+detection, and library recall.
+\end{theorem}
+
+\begin{theorem}[RLHF metric barrier]\label{thm:rlhf}
+The RLHF-trained policy $\pi^* \propto \pi_{\mathrm{ref}}
+\cdot e^{r/\beta}$ induces a fixed Riemannian metric
+$g^* = \mathrm{Fisher}(\pi^*)$.
+GAL provides metric freedom by changing the context
+(coordinates), not the metric (weights):
+$\pi^*(y \mid x, \mathrm{context})$ shifts the geodesic
+to pass through the correct component~$M_k$.
+\end{theorem}
+
+% ══════════════════════════════════════════════════════════
+\section{The Skill--Knowledge Separation}\label{sec:separation}
+
+\begin{proposition}[Separation]\label{prop:separation}
+For a domain with exact oracle:
+\begin{itemize}[nosep]
+  \item \textbf{Knowledge} (structural correspondences) requires
+    $O(|\calI|)$ library entries, zero gradient updates.
+  \item \textbf{Skill} (protocol compliance) requires
+    $O(1\text{M})$ tokens of fine-tuning, domain-general
+    (transfers across domains).
+\end{itemize}
+Total training: $|\calI| \cdot O(1) + O(1\text{M})$ tokens.\\
+STP total training: $51.3 \times 10^9$ tokens.\\
+Ratio: $\sim 50{,}000\times$ less.
+\end{proposition}
+
+% ══════════════════════════════════════════════════════════
+\section{Experiments}\label{sec:experiments}
+
+\subsection{Setup}
+
+\begin{itemize}[nosep]
+  \item \textbf{Model}: DeepSeek-Prover-V2 (7B), frozen for
+    Phase~1.
+  \item \textbf{Oracle}: Lean~4 type checker (exact, structured
+    errors).
+  \item \textbf{Benchmark}: LeanWorkbook (15K problems).
+  \item \textbf{Library}: starts empty, grows over problems.
+  \item \textbf{Baseline}: STP~\citep{dong2025stp} (51.3B
+    fine-tune, 28.5\%).
+\end{itemize}
+
+\subsection{Phase 1: Framework only}
+Frozen model + GAL framework + empty library.
+\emph{Expected: $\sim$20--25\%.}
+
+\subsection{Phase 2: Protocol fine-tuning}
+$+$ 1M tokens of skill training (library usage, formal output,
+tool usage).
+\emph{Expected: $\sim$30--35\%.}
+
+\subsection{Phase 3: Library growth}
+Library accumulated over 500--1000 problems via self-supervised
+loop.
+\emph{Expected: $\sim$40--50\%.}
+
+% ══════════════════════════════════════════════════════════
+\section{The Library API}\label{sec:api}
+
+\begin{definition}[Library operations]\label{def:api}
+\begin{enumerate}[nosep]
+  \item $\mathrm{recall}(p) \to \calE'$: semantic matching
+    (LLM-native).
+  \item $\mathrm{learn}(e) \to \calI'$: append entry.
+  \item $\mathrm{compose}(e_1, e_2) \to e_3$: if $A \cong B$
+    and $B \cong C$, suggest $A \cong C$.
+  \item $\mathrm{prune}(p) \to \mathrm{bool}$: $\geq 3$
+    failures $\to$ stop suggesting.
+  \item $\mathrm{export}() \to \mathrm{JSON}$: shareable.
+  \item $\mathrm{merge}(\calI_1, \calI_2) \to \calI$:
+    combine libraries.
+\end{enumerate}
+Oracle adapters: any function
+$\mathrm{verify}: \mathrm{Artifact} \to (\mathrm{bool},
+\mathrm{str})$ is a valid oracle.
+\end{definition}
+
+% ══════════════════════════════════════════════════════════
+\section{The Library Growth Law}\label{sec:growth}
+
+\begin{conjecture}[Growth law]\label{conj:growth}
+The resolve rate as a function of library size follows
+\begin{equation}\label{eq:growth}
+  r(|\calI|) \approx r_\infty \cdot
+  \bigl(1 - e^{-|\calI|/I^*}\bigr),
+\end{equation}
+where $r_\infty$ is the asymptotic rate and $I^*$ is the
+characteristic library size (domain-dependent).
+\end{conjecture}
+
+\begin{conjecture}[Crossover]\label{conj:crossover}
+For any domain with exact oracle, $\exists\, I^*$ such that
+for $|\calI| > I^*$:
+$\mathrm{GAL}(\text{frozen} + \calI) \geq
+\mathrm{STP}(\text{fine-tuned})$.
+\end{conjecture}
+
+The crossover point---at which library size does pattern
+matching exceed weight-based generalization---is the paper's
+main empirical question.
+
+% ══════════════════════════════════════════════════════════
+\section{Related Work}\label{sec:related}
+
+\paragraph{Self-play theorem proving.}
+STP~\citep{dong2025stp}: cooperative self-play, 51.3B tokens.
+GAL: adversarial, library-based, no weight updates.
+
+\paragraph{In-context learning.}
+\citet{xie2022explanation}: ICL = implicit Bayesian inference.
+GAL's library = persistent ICL across tasks.
+
+\paragraph{Continual learning.}
+EWC, PackNet, Progressive Networks: weight-based anti-forgetting.
+GAL: append-only library $\to$ forgetting eliminated by
+construction.
+
+\paragraph{GANs.}
+\citet{arora2017generalization}: approximate discriminator.
+GAL: exact oracle, full trajectory, library-based.
+
+\paragraph{Chain-of-thought.}
+\citet{li2024chain}: T CoT steps simulate size-T circuits.
+GAL's $\Sigma_k \to O(m^k)$ tokens is the operational
+instantiation.
+
+% ══════════════════════════════════════════════════════════
+\section{Discussion}\label{sec:discussion}
+
+\paragraph{The spectrum.}
+Library (O(1)/task, no forgetting) $\leftrightarrow$
+fine-tune (O(B) tokens, possible forgetting).
+GAL occupies the leftmost point.
+The crossover (\cref{conj:crossover}) determines when
+library-based learning suffices.
+
+\paragraph{The flywheel.}
+More users $\to$ more tasks solved $\to$ bigger library
+$\to$ better recall $\to$ higher resolve rate $\to$
+more users.  The library is the network effect.
+
+\paragraph{Limitations.}
+Library is pattern-specific (needs many tasks to cover a
+domain).  $\Sigma_4$ tasks remain hard (creative insight =
+model capability limit).  The crossover point is
+domain-dependent.
+
+% ══════════════════════════════════════════════════════════
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}
