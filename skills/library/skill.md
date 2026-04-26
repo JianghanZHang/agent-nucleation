@@ -27,7 +27,7 @@ The library only grows. No forgetting. Ever.
 
 ## Location
 
-The library lives at `pool/iso_library.json` in the repo root.
+The library lives at `library/iso_library.json` in the repo root.
 If absent, it starts empty. It is NEVER deleted — only appended to.
 
 ## Entry Format
@@ -60,7 +60,7 @@ Fields:
 At the start of V(T, B), check if the library has relevant entries:
 
 ```
-Read pool/iso_library.json.
+Read library/iso_library.json.
 For each entry, check: is this problem structurally similar?
 If match found:
   - Inject as context: "[LIBRARY] Past insight: {analogy}"
@@ -75,11 +75,11 @@ After V(T, B) produces a claim:
 ```
 If spin = +1 (success):
   Extract: what was the structural insight?
-  Write entry with spin=+1 to pool/iso_library.json
+  Write entry with spin=+1 to library/iso_library.json
 
 If spin = -1 (failure):
   Extract: what approach was tried and failed?
-  Write entry with spin=-1 to pool/iso_library.json (negative evidence)
+  Write entry with spin=-1 to library/iso_library.json (negative evidence)
 ```
 
 ### COMPOSE (reasoning about entries)

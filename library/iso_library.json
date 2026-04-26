@@ -1,0 +1,47 @@
+[
+  {
+    "analogy": "overclaimed exactness : actual proof \u2245 DPI bound : exact under injectivity",
+    "transition": "M\u2080(claims exact) \u2192 M\u2081(claims bound + conditions for exactness)",
+    "frame": "careful reader: which claims need which assumptions?",
+    "task_id": "soft-mpc-review-1",
+    "spin": 1,
+    "sigma_level": 2,
+    "scope": "global"
+  },
+  {
+    "analogy": "theory-level notation : algorithm-level \u2245 per-instance param : global approx",
+    "transition": "M\u2080(mixes L1 and L2) \u2192 M\u2081(splits into L1 paragraph + L2 paragraph)",
+    "frame": "Kolmogorov: separate the layers explicitly",
+    "task_id": "soft-mpc-review-2",
+    "spin": 1,
+    "sigma_level": 3,
+    "scope": "global"
+  },
+  {
+    "analogy": "abstract gradient target : body proof \u2245 V_soft : F(\u03b8) joint free energy",
+    "transition": "M\u2080(inconsistent notation) \u2192 M\u2081(unified notation throughout)",
+    "frame": "notation police: grep all occurrences, unify",
+    "task_id": "soft-mpc-review-3",
+    "spin": 1,
+    "sigma_level": 1,
+    "scope": "global"
+  },
+  {
+    "analogy": "theorem without frozen-param caveat : correct \u2245 missing for-fixed-\u03b8",
+    "transition": "M\u2080(theorem seems general) \u2192 M\u2081(theorem explicitly states frozen \u03b8)",
+    "frame": "adversary: what assumptions are hidden?",
+    "task_id": "soft-mpc-review-4",
+    "spin": 1,
+    "sigma_level": 1,
+    "scope": "global"
+  },
+  {
+    "analogy": "heuristic derivation : quasi-proof tone \u2245 drives : heuristically tends",
+    "transition": "M\u2080(overclaimed convergence) \u2192 M\u2081(honest heuristic language)",
+    "frame": "honest author: say suggests not proves when you cannot prove",
+    "task_id": "soft-mpc-review-5",
+    "spin": 1,
+    "sigma_level": 2,
+    "scope": "global"
+  }
+]
