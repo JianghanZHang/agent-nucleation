@@ -27,10 +27,13 @@
 \DeclareMathOperator*{\argmax}{arg\,max}
 \newcommand{\E}{\mathbb{E}}
 \newcommand{\R}{\mathbb{R}}
+\newcommand{\calA}{\mathcal{A}}
+\newcommand{\calD}{\mathcal{D}}
 \newcommand{\calE}{\mathcal{E}}
 \newcommand{\calF}{\mathcal{F}}
 \newcommand{\calG}{\mathcal{G}}
 \newcommand{\calI}{\mathcal{I}}
+\newcommand{\calS}{\mathcal{S}}
 \newcommand{\Tcal}{\mathcal{T}}
 \newcommand{\KL}{D_{\mathrm{KL}}}
 \newcommand{\bU}{\mathbf{U}}
@@ -320,6 +323,161 @@ GAL provides metric freedom by changing the context
 $\pi^*(y \mid x, \mathrm{context})$ shifts the geodesic
 to pass through the correct component~$M_k$.
 \end{theorem}
+
+% ══════════════════════════════════════════════════════════
+% ══════════════════════════════════════════════════════════
+\section{Stackelberg Markov Game Formulation}\label{sec:stackelberg}
+
+The GAL game loop (\cref{alg:gal}) is a \emph{Stackelberg
+Markov game}: the builder (leader) commits to an action, the
+adversary (follower) best-responds, and the oracle evaluates.
+This section formalises the game and derives the learning
+dynamics.
+
+\subsection{The game}
+
+\begin{definition}[GAL Stackelberg Markov game]%
+\label{def:stackelberg-game}
+The tuple $(\calS, \calA_B, \calA_A, P, R, \gamma)$ where:
+\begin{itemize}[nosep]
+  \item $\calS = 2^{\mathrm{Evidence}}$: state space
+    (filtration states);
+  \item $\calA_B = \mathrm{Tools}$: builder (leader) action
+    space;
+  \item $\calA_A = \mathrm{Tools}_{\mathrm{read}} \cup
+    \{\textsc{Pass}, \textsc{Issue}\}$: adversary (follower)
+    action space;
+  \item $P(F_{t+1} \mid F_t, a_B, a_A) =
+    \mathbf{1}[F_{t+1} = F_t \cup \Delta F(a_B, a_A)]$:
+    deterministic filtration growth;
+  \item $R = \sigma \in \{+1, -1\}$: terminal reward
+    (oracle verdict);
+  \item $\gamma = 1$: episodic (no discounting).
+\end{itemize}
+\end{definition}
+
+\begin{definition}[Stackelberg equilibrium]%
+\label{def:stackelberg-eq}
+The builder's optimal policy is
+\begin{equation}\label{eq:stackelberg-eq}
+  \pi_B^* = \argmax_{\pi_B}
+  V_B\bigl(\pi_B,\; \mathrm{BR}_A(\pi_B)\bigr),
+\end{equation}
+where $\mathrm{BR}_A(\pi_B)
+= \argmax_{\pi_A} V_A(\pi_B, \pi_A)$ is the adversary's
+best response, and
+\begin{align}
+  V_B(\pi_B, \pi_A)
+  &= P\bigl(\sigma = +1 \mid \pi_B, \pi_A\bigr),
+  \label{eq:V-builder} \\
+  V_A(\pi_B, \pi_A)
+  &= \E\bigl[\text{counterexample accuracy} \mid
+    \pi_B, \pi_A\bigr].
+  \label{eq:V-adversary}
+\end{align}
+The builder maximises resolve probability; the adversary
+maximises counterexample quality.  The oracle is not a player
+---it is the environment (ground truth).
+\end{definition}
+
+\begin{remark}[Why Stackelberg, not Nash]%
+\label{rem:stackelberg-not-nash}
+In a Nash game, both players move simultaneously---neither
+observes the other's action.  In our game, the builder
+\emph{commits} (writes a patch), then the adversary
+\emph{observes} the patch and responds.  This sequential
+structure is Stackelberg: the leader commits, the follower
+best-responds.  The follower's response is
+\emph{conditioned} on the leader's move, providing strictly
+richer signal than simultaneous play.
+\end{remark}
+
+\subsection{Schur complement: eliminating the follower}
+
+The joint action-value matrix of the Stackelberg game
+decomposes as
+\begin{equation}\label{eq:joint-Q}
+  Q =
+  \begin{bmatrix}
+    Q_{BB} & Q_{BA} \\
+    Q_{AB} & Q_{AA}
+  \end{bmatrix},
+\end{equation}
+where $Q_{BB}$ captures the builder's self-interaction,
+$Q_{AA}$ the adversary's, and $Q_{BA}, Q_{AB}$ the coupling.
+Eliminating the adversary (follower) via Schur complement
+gives the builder's \emph{effective} action-value:
+\begin{equation}\label{eq:schur-game}
+  Q^{\mathrm{feas}}
+  = Q_{BB} - Q_{BA}\, Q_{AA}^{-1}\, Q_{AB}.
+\end{equation}
+This is the builder's action space \emph{after accounting for
+the adversary's best response}---the same Schur complement
+that eliminates followers in the Stackelberg
+chain~\citep{kappen2005path}.  The builder's optimal policy
+$\pi_B^*$ is the greedy policy with respect to
+$Q^{\mathrm{feas}}$.
+
+\subsection{Self-play learning dynamics}
+
+\begin{algorithm}[t]
+\caption{Stackelberg Self-Play for GAL}\label{alg:self-play}
+\begin{algorithmic}[1]
+\REQUIRE task distribution $\calD$, library $\calI$,
+  policies $\pi_B, \pi_A$
+\FOR{episode $= 1, 2, \ldots$}
+  \STATE $\tau \gets$ task $\sim \calD$
+  \STATE $d \gets \calI.\mathrm{recall}(\tau)$
+  \STATE Play GAL game (\cref{alg:gal}) $\to$ trajectory
+    $\{(F_t, a_B^t, a_A^t)\}$
+  \STATE $\sigma \gets \textsc{Oracle}(\text{final patch})$
+    \hfill\COMMENT{terminal reward}
+  \STATE \COMMENT{Credit assignment}
+  \FOR{$t = T, T{-}1, \ldots, 0$}
+    \STATE $Q_B(F_t, a_B^t) \mathrel{+}=
+      \alpha\bigl(\sigma - Q_B(F_t, a_B^t)\bigr)$
+    \STATE $Q_A(F_t, a_A^t) \mathrel{+}=
+      \alpha\bigl(\text{acc}_t - Q_A(F_t, a_A^t)\bigr)$
+  \ENDFOR
+  \STATE \COMMENT{Stackelberg update: leader first}
+  \STATE $\pi_B \gets \mathrm{update}(\pi_B, Q_B)$
+    \hfill\COMMENT{builder improves}
+  \STATE $\pi_A \gets \mathrm{update}(\pi_A, Q_A, \pi_B)$
+    \hfill\COMMENT{adversary best-responds to new builder}
+  \STATE \COMMENT{Library grows}
+  \STATE $\calI.\mathrm{learn}(\text{insight}, \sigma)$
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
+
+\begin{remark}[Three learning channels]%
+\label{rem:three-channels}
+Each episode generates signal for all three channels
+simultaneously:
+\begin{enumerate}[label=(\roman*),nosep]
+  \item \textbf{Library} (across tasks, no gradient):
+    append isomorphism entry.  $O(1)$ per task.
+  \item \textbf{Fine-tuning} (across episodes, small gradient):
+    update $\pi_B, \pi_A$ from game traces.
+    $\sim\!1$M tokens for protocol skill.
+  \item \textbf{Filtration} (within task, no gradient):
+    $F_t$ grows by tool calls.  A$^*$ ordering.
+    Resets at task end.
+\end{enumerate}
+The game trace IS the training data.  The oracle IS the
+labeler.  No human annotation needed.
+\end{remark}
+
+\begin{remark}[What fine-tuning learns vs.\ what it doesn't]%
+\label{rem:finetune-scope}
+Fine-tuning on Stackelberg self-play teaches \emph{policies}
+(when to call \texttt{find}, when to read the library, when
+to switch frame), not \emph{knowledge} (what patterns exist).
+Knowledge lives in the library; policies live in the weights.
+This separation keeps fine-tuning small ($\sim\!1$M tokens)
+and domain-general (a policy learned on SWE-bench transfers
+to LeanWorkbook).
+\end{remark}
 
 % ══════════════════════════════════════════════════════════
 \section{The Skill--Knowledge Separation}\label{sec:separation}
